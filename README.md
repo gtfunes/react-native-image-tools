@@ -105,6 +105,44 @@ RNImageTools.resize(image, 500, 500)
   .catch(console.error);
 ```
 
+### cornerRadius(image, width, height, radius)
+#### Parameter(s)
+* **image:** String - path to image
+* **width:** Number
+* **height:** Number - in degrees
+* **radius:** Number
+#### Returns Promise of
+* **resizedImage:** Object 
+* **uri:** String
+* **width:** Number
+* **height:** Number
+```javascript
+RNImageTools.cornerRadius(image, 500, 500, 500/2)
+.then(({ uri, width, height }) => {
+// Sync with your app state
+})
+.catch(console.error);
+```
+
+### borderRadius(image, width, height, radius, borderColor)
+#### Parameter(s)
+* **image:** String - path to image
+* **width:** Number
+* **height:** Number - in degrees
+* **radius:** Number
+* **borderColor:** String - #FFFFFF
+#### Returns Promise of
+* **resizedImage:** Object 
+* **uri:** String
+* **width:** Number
+* **height:** Number
+```javascript
+RNImageTools.borderRadius(image, 500, 500, 500/2, "#009900")
+.then(({ uri, width, height }) => {
+// Sync with your app state
+})
+.catch(console.error);
+```
 
 ### crop(image, x, y, width, height)
 #### Parameter(s)
