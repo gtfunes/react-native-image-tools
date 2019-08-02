@@ -10,6 +10,7 @@ import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
+import android.graphics.RectF;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -38,20 +39,11 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
             return;
         }
 
-        final HashMap containedRectMap = Utility.calcRectForContainedRect(
-            bmp.getWidth(), bmp.getHeight(),
-            width, height
-        );
-        int rectWidth = (int) containedRectMap.get("width");
-        int rectHeight = (int) containedRectMap.get("height");
-        int rectX = (int) containedRectMap.get("x");
-        int rectY = (int) containedRectMap.get("y");
-
         Bitmap editBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(editBmp);
 
         Rect srcRect = new Rect(0, 0, bmp.getWidth(), bmp.getHeight());
-        Rect dstRect = new Rect(rectX, rectY, rectWidth + rectX, rectHeight + rectY);
+        Rect dstRect = this.getResizeRect(bmp, width, height);
 
         canvas.drawBitmap(bmp, srcRect, dstRect, null);
 
@@ -74,6 +66,54 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
         Utility.writeBMPToPNGFile(croppedBmp, file, promise);
 
         final WritableMap map = Utility.buildImageReactMap(file, croppedBmp);
+        promise.resolve(map);
+    }
+
+    @ReactMethod
+    public void cornerRadius(String uriString, int width, int height, float radius, final Promise promise) {
+        Bitmap bmp = Utility.bitmapFromUriString(uriString, promise, reactContext);
+        if (bmp == null) {
+            return;
+        }
+
+        Bitmap editBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Rect dstRect = this.getResizeRect(bmp, width, height);
+        Canvas canvas = this.getCornerRadiusCanvas(bmp, editBmp, dstRect, radius);
+
+        File file = Utility.createRandomPNGFile(reactContext);
+        Utility.writeBMPToPNGFile(editBmp, file, promise);
+
+        final WritableMap map = Utility.buildImageReactMap(file, editBmp);
+        promise.resolve(map);
+    }
+
+    @ReactMethod
+    public void borderRadius(String uriString, int width, int height, float radius, String borderColor, final Promise promise) {
+        Bitmap bmp = Utility.bitmapFromUriString(uriString, promise, reactContext);
+        if (bmp == null) {
+            return;
+        }
+
+        Bitmap editBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Rect dstRect = this.getResizeRect(bmp, width, height);
+        Canvas canvas = this.getCornerRadiusCanvas(bmp, editBmp, dstRect, radius);
+        //Draw a border line
+        float borderWidth = 2 * width / 50;
+        final Paint borderPaint = new Paint();
+        borderPaint.setAntiAlias(true);
+        borderPaint.setColor(Color.parseColor(borderColor));
+        borderPaint.setStrokeJoin(Paint.Join.ROUND);
+        borderPaint.setStyle(Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(borderWidth);
+        borderPaint.setXfermode(null);
+        float scale = borderWidth/2;
+        final RectF borderRectF = new RectF(dstRect.left + scale,dstRect.top + scale, dstRect.right - scale, dstRect.bottom - scale);
+        canvas.drawRoundRect(borderRectF, radius - scale , radius - scale , borderPaint);
+
+        File file = Utility.createRandomPNGFile(reactContext);
+        Utility.writeBMPToPNGFile(editBmp, file, promise);
+
+        final WritableMap map = Utility.buildImageReactMap(file, editBmp);
         promise.resolve(map);
     }
 
@@ -235,6 +275,28 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
         promise.resolve(map);
     }
 
+    public Rect getResizeRect(Bitmap image, int resizeWidth, int resizeHeight) {
+      final HashMap containedRectMap = Utility.calcRectForContainedRect(image.getWidth(), image.getHeight(), resizeWidth, resizeHeight);
+        int rectWidth = (int) containedRectMap.get("width");
+        int rectHeight = (int) containedRectMap.get("height");
+        int rectX = (int) containedRectMap.get("x");
+        int rectY = (int) containedRectMap.get("y");
+        return new Rect(rectX, rectY, rectWidth + rectX, rectHeight + rectY);
+    }
+
+    public Canvas getCornerRadiusCanvas(Bitmap srcBmp, Bitmap editBmp, Rect dstRect, float radius ) {
+      Canvas canvas = new Canvas(editBmp);
+      Rect srcRect = new Rect(0, 0, srcBmp.getWidth(), srcBmp.getHeight());
+      final Paint paint = new Paint();
+      final RectF rectF = new RectF(dstRect);
+      paint.setAntiAlias(true);
+      canvas.drawARGB(0, 0, 0, 0);
+      canvas.drawRoundRect(rectF, radius, radius, paint);
+
+      paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN) );
+      canvas.drawBitmap(srcBmp, srcRect, dstRect, paint);
+      return canvas;
+    }
 
     @Override
     public String getName() {
