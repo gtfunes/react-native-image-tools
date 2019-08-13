@@ -144,6 +144,28 @@ RNImageTools.borderRadius(image, 500, 500, 500/2, "#009900")
 .catch(console.error);
 ```
 
+### borderRadiusWithPadding(image, width, height, radius, borderColor, padding)
+#### Parameter(s)
+* **image:** String - path to image
+* **width:** Number
+* **height:** Number - in degrees
+* **radius:** Number
+* **borderColor:** String - #FFFFFF
+* **padding:** Number
+#### Returns Promise of
+* **resizedImage:** Object 
+* **uri:** String
+* **width:** Number
+* **height:** Number
+```javascript
+RNImageTools.borderRadiusWithPadding(image, 500, 500, 500/2, "#009900", 2)
+.then(({ uri, width, height }) => {
+// Sync with your app state
+})
+.catch(console.error);
+```
+
+
 ### crop(image, x, y, width, height)
 #### Parameter(s)
 * **image:** String - path to image
