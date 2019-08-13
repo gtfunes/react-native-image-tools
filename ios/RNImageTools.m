@@ -146,6 +146,45 @@ RCT_EXPORT_METHOD(borderRadius:(NSString *)imageURLString
               });
 }
 
+RCT_EXPORT_METHOD(borderRadiusWithPadding:(NSString *)imageURLString
+                  toWidth:(CGFloat)width
+                  toHeight:(CGFloat)height
+                  radius: (CGFloat)radius
+                  borderColor: (NSString *)borderColor
+                  padding:(CGFloat) padding
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    UIImage *image = [self getUIImageFromURLString:imageURLString];
+    CGSize size = CGSizeMake(width, height);
+    //draw image first
+    UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:image.size.width/2 withPadding: padding * image.size.width / 26 andBorderColor:borderColor];
+    UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
+    NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
+    NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
+    UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
+    [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
+    UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
+    [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
+    resolve(@{
+              @"uri": imagePath,
+              @"width": [NSNumber numberWithFloat:resizedImage.size.width],
+              @"height": [NSNumber numberWithFloat:resizedImage.size.height]
+              });
+}
+
+- (UIImage *)imageWithImage:(UIImage *)image scaledToSize:(CGSize)newSize scale:(CGFloat)scale {
+    if (!image) {
+        return nil;
+    }
+    CGRect rect = CGRectMake(0, 0, newSize.width, newSize.height);
+    UIGraphicsBeginImageContextWithOptions(newSize, false, scale);
+    [image drawInRect:rect];
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return newImage;
+}
+
 RCT_EXPORT_METHOD(merge:(NSArray *)imageURLStrings
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
@@ -218,6 +257,33 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     }
     UIImage *newImage =  UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
+    return newImage;
+}
+
+- (UIImage *)drawCornerRadiusForImage:(UIImage *) image withRadius: (CGFloat) radius withPadding: (CGFloat)padding andBorderColor: (nullable NSString *) borderColor {
+    CGFloat size = radius * 2;
+    UIImageView *imageView = [[UIImageView alloc] initWithFrame:CGRectMake(padding, padding, size - padding * 2, size - padding * 2)];
+    imageView.image = image;
+    imageView.contentMode = UIViewContentModeScaleAspectFill;
+    imageView.layer.cornerRadius = radius - padding ;
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, size, size)];
+    [view addSubview:imageView];
+    view.layer.cornerRadius = radius;
+    if (borderColor != nil) {
+        view.layer.borderWidth = size * 1.5 / 26;
+        view.layer.borderColor = [[self colorWithHexString:borderColor] CGColor];
+    }
+    view.clipsToBounds = true;
+    imageView.clipsToBounds = true;
+    UIGraphicsBeginImageContext(view.bounds.size);
+
+    if (UIGraphicsGetCurrentContext() != nil) {
+        [view.layer renderInContext:UIGraphicsGetCurrentContext()];
+    }
+    UIImage *newImage =  UIGraphicsGetImageFromCurrentImageContext();
+//    NSData *imageData = UIImageJPEGRepresentation(newImage, 1);
+    UIGraphicsEndImageContext();
+//    return [UIImage imageWithData:imageData];
     return newImage;
 }
 
@@ -294,6 +360,13 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     
     return maskedImage;
 }
+- (NSString *)saveImage:(UIImage *)image withImageName: (NSString *)fileName {
+    NSString *fullPath = [NSString stringWithFormat:@"%@/%@.png", [self getPathForDirectory:NSDocumentDirectory], fileName];
+
+    NSData *imageData = UIImageJPEGRepresentation(image, 0.9);
+    [imageData writeToFile:fullPath atomically:YES];
+    return fullPath;
+}
 
 - (NSString *)saveImage:(UIImage *)image withPostfix:(NSString *)postfix {
     NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
@@ -305,10 +378,18 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
 
 - (void)deleteImageAtPath:(NSString *)path {
     NSError *error;
-    if ([[NSFileManager defaultManager] isDeletableFileAtPath:path]) {
-        BOOL success = [[NSFileManager defaultManager] removeItemAtPath:path error:&error];
-        if (!success) {
-            NSLog(@"Error removing file at path: %@", error.localizedDescription);
+    NSString *directoryPath = [path stringByDeletingLastPathComponent];
+    NSString *extension = [path pathExtension];
+    NSString *fileName = [[path lastPathComponent] stringByDeletingPathExtension];
+    NSString *fileName2x = [NSString stringWithFormat:@"%@/%@@2x.%@", directoryPath, fileName, extension];
+    NSString *fileName3x = [NSString stringWithFormat:@"%@/%@@3x.%@", directoryPath, fileName, extension];
+    NSArray * paths = @[path, fileName2x, fileName3x];
+    for (int i = 0; i < paths.count; i++) {
+        if ([[NSFileManager defaultManager] isDeletableFileAtPath:paths[i]]) {
+            BOOL success = [[NSFileManager defaultManager] removeItemAtPath:paths[i] error:&error];
+            if (!success) {
+                NSLog(@"Error removing file at path: %@", error.localizedDescription);
+            }
         }
     }
 }
