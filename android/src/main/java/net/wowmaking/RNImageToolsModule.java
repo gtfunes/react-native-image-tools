@@ -118,6 +118,48 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void borderRadiusWithPadding(String uriString, int width, int height, float radius, String borderColor, float padding, final Promise promise) {
+        Bitmap bmp = Utility.bitmapFromUriString(uriString, promise, reactContext);
+        if (bmp == null) {
+            return;
+        }
+
+        Bitmap editBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Rect dstRect = this.getResizeRect(bmp, width, height);
+        Canvas canvas = this.getCornerRadiusCanvas(bmp, editBmp, dstRect, radius);
+        //Draw a border line
+        float borderWidth = 2 * width / 50;
+        final Paint borderPaint = new Paint();
+        borderPaint.setAntiAlias(true);
+        borderPaint.setColor(Color.parseColor(borderColor));
+        borderPaint.setStrokeJoin(Paint.Join.ROUND);
+        borderPaint.setStyle(Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(borderWidth);
+        borderPaint.setXfermode(null);
+        float scale = borderWidth/2;
+        final RectF borderRectF = new RectF(dstRect.left + scale,dstRect.top + scale, dstRect.right - scale, dstRect.bottom - scale);
+        canvas.drawRoundRect(borderRectF, radius - scale , radius - scale , borderPaint);
+        //draw a padding line
+        final Paint paddingPaint = new Paint();
+        paddingPaint.setAntiAlias(true);
+        paddingPaint.setColor(Color.parseColor("#FFFFFF"));
+        paddingPaint.setStrokeJoin(Paint.Join.ROUND);
+        paddingPaint.setStyle(Paint.Style.STROKE);
+        paddingPaint.setStrokeWidth(padding);
+        paddingPaint.setXfermode(null);
+        float paddingScale = padding/2;
+        float paddingRadius = radius - borderWidth;
+        final RectF paddingRectF = new RectF(borderRectF.left + scale + paddingScale,borderRectF.top + scale + paddingScale, borderRectF.right  - scale - paddingScale, borderRectF.bottom  - scale - paddingScale);
+        canvas.drawRoundRect(paddingRectF, paddingRadius - paddingScale , paddingRadius - paddingScale, paddingPaint);
+
+        File file = Utility.createRandomPNGFile(reactContext);
+        Utility.writeBMPToPNGFile(editBmp, file, promise);
+
+        final WritableMap map = Utility.buildImageReactMap(file, editBmp);
+        promise.resolve(map);
+    }
+
+    @ReactMethod
     public void transform(String uriString, float translateX, float translateY, float rotate, float scale, final Promise promise) {
         Bitmap bmp = Utility.bitmapFromUriString(uriString, promise, reactContext);
         if (bmp == null) {
@@ -273,6 +315,19 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
 
         final WritableMap map = Utility.buildImageReactMap(file, editBmp);
         promise.resolve(map);
+    }
+
+    @ReactMethod
+    public void delete(String uriString, Promise promise) {
+      try {
+        File fdelete = new File(reactContext.getFilesDir(), uriString.substring(uriString.lastIndexOf("/") + 1));
+        if (fdelete.exists()) {
+          fdelete.delete();
+        }
+      } catch (Exception e) {
+
+      }
+      promise.resolve(true);
     }
 
     public Rect getResizeRect(Bitmap image, int resizeWidth, int resizeHeight) {
