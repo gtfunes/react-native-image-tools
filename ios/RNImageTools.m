@@ -173,6 +173,34 @@ RCT_EXPORT_METHOD(borderRadiusWithPadding:(NSString *)imageURLString
               });
 }
 
+RCT_EXPORT_METHOD(borderCircle:(NSString *)imageURLString
+                  toSize:(CGFloat)imageSize
+                  borderWidth: (CGFloat)borderWidth
+                  borderColor: (NSString *)borderColor
+                  padding:(CGFloat) padding
+                  backgroundColor: (NSString *)backgroundColor
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    UIImage *image = [self getUIImageFromURLString:imageURLString];
+    CGSize size = CGSizeMake(imageSize, imageSize);
+    //draw image first
+    UIImage *newImage = [self cropCircleForImage:image withSize:imageSize withPadding:padding borderWith:borderWidth borderColor:borderColor andBackgroundColor:backgroundColor];
+    
+    UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
+    NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
+    NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
+    UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
+    [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
+    UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
+    [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
+    resolve(@{
+              @"uri": imagePath,
+              @"width": [NSNumber numberWithFloat:resizedImage.size.width],
+              @"height": [NSNumber numberWithFloat:resizedImage.size.height]
+              });
+}
+
 - (UIImage *)imageWithImage:(UIImage *)image scaledToSize:(CGSize)newSize scale:(CGFloat)scale {
     if (!image) {
         return nil;
@@ -286,7 +314,32 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
 //    return [UIImage imageWithData:imageData];
     return newImage;
 }
-
+- (UIImage *)cropCircleForImage:(UIImage *) image withSize: (CGFloat) size withPadding: (CGFloat)padding borderWith: (CGFloat)borderWidth borderColor: (nullable NSString *) borderColor andBackgroundColor: (nullable NSString *)backgroundColor {
+    CGFloat radius = size / 2.0f;
+    UIImageView *imageView = [[UIImageView alloc] initWithFrame:CGRectMake(padding, padding, size - padding * 2, size - padding * 2)];
+    imageView.image = image;
+    imageView.contentMode = UIViewContentModeScaleAspectFill;
+    imageView.layer.cornerRadius = radius - padding ;
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, size, size)];
+    [view addSubview:imageView];
+    view.layer.cornerRadius = radius;
+    if (borderColor != nil) {
+        view.layer.borderWidth = borderWidth;
+        view.layer.borderColor = [[self colorWithHexString:borderColor] CGColor];
+    }
+    view.clipsToBounds = true;
+    imageView.clipsToBounds = true;
+    imageView.backgroundColor = [UIColor clearColor];
+    [view setBackgroundColor: [self colorWithHexString:backgroundColor]];
+    UIGraphicsBeginImageContextWithOptions(view.bounds.size, false, 0);
+    if (UIGraphicsGetCurrentContext() != nil) {
+        [[UIColor clearColor] set];
+        [view.layer renderInContext:UIGraphicsGetCurrentContext()];
+    }
+    UIImage *newImage =  UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return newImage;
+}
 - (UIColor *) colorWithHexString: (NSString *) hexString {
     NSString *colorString = [[hexString stringByReplacingOccurrencesOfString: @"#" withString: @""] uppercaseString];
     CGFloat alpha, red, blue, green;
@@ -363,7 +416,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
 - (NSString *)saveImage:(UIImage *)image withImageName: (NSString *)fileName {
     NSString *fullPath = [NSString stringWithFormat:@"%@/%@.png", [self getPathForDirectory:NSDocumentDirectory], fileName];
 
-    NSData *imageData = UIImageJPEGRepresentation(image, 0.9);
+    NSData *imageData = UIImagePNGRepresentation(image);
     [imageData writeToFile:fullPath atomically:YES];
     return fullPath;
 }

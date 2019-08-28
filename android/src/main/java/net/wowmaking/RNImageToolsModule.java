@@ -160,6 +160,48 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void borderCircle(String uriString, int size, float borderWidth, String borderColor, float padding,  String backgroundColor, final Promise promise) {
+        Bitmap bmp = Utility.bitmapFromUriString(uriString, promise, reactContext);
+        if (bmp == null) {
+            return;
+        }
+
+        Bitmap editBmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Rect dstRect = this.getResizeRect(bmp, size, size);
+        float radius = (float)size / 2.0f;
+        Canvas canvas = this.getCornerRadiusCanvas(bmp, editBmp, dstRect, radius);
+        //Draw a border line
+        final Paint borderPaint = new Paint();
+        borderPaint.setAntiAlias(true);
+        borderPaint.setColor(Color.parseColor(borderColor));
+        borderPaint.setStrokeJoin(Paint.Join.ROUND);
+        borderPaint.setStyle(Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(borderWidth);
+        borderPaint.setXfermode(null);
+        float scale = borderWidth/2;
+        final RectF borderRectF = new RectF(dstRect.left + scale,dstRect.top + scale, dstRect.right - scale, dstRect.bottom - scale);
+        canvas.drawRoundRect(borderRectF, radius - scale , radius - scale , borderPaint);
+        //draw a padding line
+        final Paint paddingPaint = new Paint();
+        paddingPaint.setAntiAlias(true);
+        paddingPaint.setColor(Color.parseColor(backgroundColor));
+        paddingPaint.setStrokeJoin(Paint.Join.ROUND);
+        paddingPaint.setStyle(Paint.Style.STROKE);
+        paddingPaint.setStrokeWidth(padding);
+        paddingPaint.setXfermode(null);
+        float paddingScale = padding/2;
+        float paddingRadius = radius - borderWidth;
+        final RectF paddingRectF = new RectF(borderRectF.left + scale + paddingScale,borderRectF.top + scale + paddingScale, borderRectF.right  - scale - paddingScale, borderRectF.bottom  - scale - paddingScale);
+        canvas.drawRoundRect(paddingRectF, paddingRadius - paddingScale , paddingRadius - paddingScale, paddingPaint);
+
+        File file = Utility.createRandomPNGFile(reactContext);
+        Utility.writeBMPToPNGFile(editBmp, file, promise);
+
+        final WritableMap map = Utility.buildImageReactMap(file, editBmp);
+        promise.resolve(map);
+    }
+
+    @ReactMethod
     public void transform(String uriString, float translateX, float translateY, float rotate, float scale, final Promise promise) {
         Bitmap bmp = Utility.bitmapFromUriString(uriString, promise, reactContext);
         if (bmp == null) {
