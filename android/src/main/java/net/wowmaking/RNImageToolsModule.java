@@ -168,12 +168,23 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void borderCircle(String uriString, int size, float borderWidth, String borderColor, float padding,
       String backgroundColor, final Promise promise) {
-    Bitmap bmp = Utility.bitmapFromUriString(uriString, promise, reactContext);
-    if (bmp == null) {
+    Bitmap src = Utility.bitmapFromUriString(uriString, promise, reactContext);
+    if (src == null) {
       return;
     }
 
     Bitmap editBmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+
+    int srcWidth = src.getWidth();
+    int srcHeight = src.getHeight();
+    int newWidth = (srcHeight > srcWidth) ? srcWidth : srcHeight;
+    int newHeight = (srcHeight > srcWidth)? srcWidth : srcHeight;
+    int cropW = (srcWidth - srcHeight) / 2;
+    cropW = (cropW < 0)? 0: cropW;
+    int cropH = (srcHeight - srcWidth) / 2;
+    cropH = (cropH < 0)? 0: cropH;
+    Bitmap bmp = Bitmap.createBitmap(src, cropW, cropH, newWidth, newHeight);
+
     Rect dstRect = this.getResizeSquare(bmp, size);
     float radius = (float) size / 2.0f;
     Canvas canvas = this.getCornerRadiusCanvas(bmp, editBmp, dstRect, radius);
