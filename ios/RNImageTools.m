@@ -102,6 +102,117 @@ RCT_EXPORT_METHOD(resize:(NSString *)imageURLString
               });
 }
 
+RCT_EXPORT_METHOD(cornerRadius:(NSString *)imageURLString
+                  toWidth:(CGFloat)width
+                  toHeight:(CGFloat)height
+                  radius: (CGFloat)radius
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    UIImage *image = [self getUIImageFromURLString:imageURLString];
+
+    image = [self resizeImage:image toWidth:width toHeight:height];
+
+    UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:radius andBorderColor:nil];
+
+    NSString *imagePath = [self saveImage:newImage withPostfix:@"cornerRadius"];
+
+    resolve(@{
+              @"uri": imagePath,
+              @"width": [NSNumber numberWithFloat:image.size.width],
+              @"height": [NSNumber numberWithFloat:image.size.height]
+              });
+}
+
+RCT_EXPORT_METHOD(borderRadius:(NSString *)imageURLString
+                  toWidth:(CGFloat)width
+                  toHeight:(CGFloat)height
+                  radius: (CGFloat)radius
+                  borderColor: (NSString *)borderColor
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    UIImage *image = [self getUIImageFromURLString:imageURLString];
+    image = [self resizeImage:image toWidth:width toHeight:height];
+
+    UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:radius andBorderColor:borderColor];
+
+    NSString *imagePath = [self saveImage:newImage withPostfix:@"borderRadius"];
+
+    resolve(@{
+              @"uri": imagePath,
+              @"width": [NSNumber numberWithFloat:image.size.width],
+              @"height": [NSNumber numberWithFloat:image.size.height]
+              });
+}
+
+RCT_EXPORT_METHOD(borderRadiusWithPadding:(NSString *)imageURLString
+                  toWidth:(CGFloat)width
+                  toHeight:(CGFloat)height
+                  radius: (CGFloat)radius
+                  borderColor: (NSString *)borderColor
+                  padding:(CGFloat) padding
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    UIImage *image = [self getUIImageFromURLString:imageURLString];
+    CGSize size = CGSizeMake(width, height);
+    //draw image first
+    UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:image.size.width/2 withPadding: padding * image.size.width / 26 andBorderColor:borderColor];
+    UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
+    NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
+    NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
+    UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
+    [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
+    UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
+    [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
+    resolve(@{
+              @"uri": imagePath,
+              @"width": [NSNumber numberWithFloat:resizedImage.size.width],
+              @"height": [NSNumber numberWithFloat:resizedImage.size.height]
+              });
+}
+
+RCT_EXPORT_METHOD(borderCircle:(NSString *)imageURLString
+                  toSize:(CGFloat)imageSize
+                  borderWidth: (CGFloat)borderWidth
+                  borderColor: (NSString *)borderColor
+                  padding:(CGFloat) padding
+                  backgroundColor: (NSString *)backgroundColor
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    UIImage *image = [self getUIImageFromURLString:imageURLString];
+    CGSize size = CGSizeMake(imageSize, imageSize);
+    //draw image first
+    UIImage *newImage = [self cropCircleForImage:image withSize:imageSize withPadding:padding borderWith:borderWidth borderColor:borderColor andBackgroundColor:backgroundColor];
+    
+    UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
+    NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
+    NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
+    UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
+    [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
+    UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
+    [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
+    resolve(@{
+              @"uri": imagePath,
+              @"width": [NSNumber numberWithFloat:resizedImage.size.width],
+              @"height": [NSNumber numberWithFloat:resizedImage.size.height]
+              });
+}
+
+- (UIImage *)imageWithImage:(UIImage *)image scaledToSize:(CGSize)newSize scale:(CGFloat)scale {
+    if (!image) {
+        return nil;
+    }
+    CGRect rect = CGRectMake(0, 0, newSize.width, newSize.height);
+    UIGraphicsBeginImageContextWithOptions(newSize, false, scale);
+    [image drawInRect:rect];
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return newImage;
+}
+
 RCT_EXPORT_METHOD(merge:(NSArray *)imageURLStrings
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
@@ -160,6 +271,118 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
               });
 }
 
+- (UIImage *)drawCornerRadiusForImage:(UIImage *) image withRadius: (CGFloat) radius andBorderColor: (nullable NSString *) borderColor {
+    UIImageView *imageView = [[UIImageView alloc] initWithImage:image];
+    imageView.layer.cornerRadius = radius;
+    if (borderColor != nil) {
+        imageView.layer.borderWidth = 1;
+        imageView.layer.borderColor = [[self colorWithHexString:borderColor] CGColor];
+    }
+    imageView.clipsToBounds = true;
+    UIGraphicsBeginImageContext(imageView.bounds.size);
+    if (UIGraphicsGetCurrentContext() != nil) {
+        [imageView.layer renderInContext:UIGraphicsGetCurrentContext()];
+    }
+    UIImage *newImage =  UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return newImage;
+}
+
+- (UIImage *)drawCornerRadiusForImage:(UIImage *) image withRadius: (CGFloat) radius withPadding: (CGFloat)padding andBorderColor: (nullable NSString *) borderColor {
+    CGFloat size = radius * 2;
+    UIImageView *imageView = [[UIImageView alloc] initWithFrame:CGRectMake(padding, padding, size - padding * 2, size - padding * 2)];
+    imageView.image = image;
+    imageView.contentMode = UIViewContentModeScaleAspectFill;
+    imageView.layer.cornerRadius = radius - padding ;
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, size, size)];
+    [view addSubview:imageView];
+    view.layer.cornerRadius = radius;
+    if (borderColor != nil) {
+        view.layer.borderWidth = size * 1.5 / 26;
+        view.layer.borderColor = [[self colorWithHexString:borderColor] CGColor];
+    }
+    view.clipsToBounds = true;
+    imageView.clipsToBounds = true;
+    UIGraphicsBeginImageContext(view.bounds.size);
+
+    if (UIGraphicsGetCurrentContext() != nil) {
+        [view.layer renderInContext:UIGraphicsGetCurrentContext()];
+    }
+    UIImage *newImage =  UIGraphicsGetImageFromCurrentImageContext();
+//    NSData *imageData = UIImageJPEGRepresentation(newImage, 1);
+    UIGraphicsEndImageContext();
+//    return [UIImage imageWithData:imageData];
+    return newImage;
+}
+- (UIImage *)cropCircleForImage:(UIImage *) image withSize: (CGFloat) size withPadding: (CGFloat)padding borderWith: (CGFloat)borderWidth borderColor: (nullable NSString *) borderColor andBackgroundColor: (nullable NSString *)backgroundColor {
+    CGFloat radius = size / 2.0f;
+    UIImageView *imageView = [[UIImageView alloc] initWithFrame:CGRectMake(padding, padding, size - padding * 2, size - padding * 2)];
+    imageView.image = image;
+    imageView.contentMode = UIViewContentModeScaleAspectFill;
+    imageView.layer.cornerRadius = radius - padding ;
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, size, size)];
+    [view addSubview:imageView];
+    view.layer.cornerRadius = radius;
+    if (borderColor != nil) {
+        view.layer.borderWidth = borderWidth;
+        view.layer.borderColor = [[self colorWithHexString:borderColor] CGColor];
+    }
+    view.clipsToBounds = true;
+    imageView.clipsToBounds = true;
+    imageView.backgroundColor = [UIColor clearColor];
+    [view setBackgroundColor: [self colorWithHexString:backgroundColor]];
+    UIGraphicsBeginImageContextWithOptions(view.bounds.size, false, 0);
+    if (UIGraphicsGetCurrentContext() != nil) {
+        [[UIColor clearColor] set];
+        [view.layer renderInContext:UIGraphicsGetCurrentContext()];
+    }
+    UIImage *newImage =  UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return newImage;
+}
+- (UIColor *) colorWithHexString: (NSString *) hexString {
+    NSString *colorString = [[hexString stringByReplacingOccurrencesOfString: @"#" withString: @""] uppercaseString];
+    CGFloat alpha, red, blue, green;
+    switch ([colorString length]) {
+        case 3: // #RGB
+            alpha = 1.0f;
+            red   = [self colorComponentFrom: colorString start: 0 length: 1];
+            green = [self colorComponentFrom: colorString start: 1 length: 1];
+            blue  = [self colorComponentFrom: colorString start: 2 length: 1];
+            break;
+        case 4: // #ARGB
+            alpha = [self colorComponentFrom: colorString start: 0 length: 1];
+            red   = [self colorComponentFrom: colorString start: 1 length: 1];
+            green = [self colorComponentFrom: colorString start: 2 length: 1];
+            blue  = [self colorComponentFrom: colorString start: 3 length: 1];
+            break;
+        case 6: // #RRGGBB
+            alpha = 1.0f;
+            red   = [self colorComponentFrom: colorString start: 0 length: 2];
+            green = [self colorComponentFrom: colorString start: 2 length: 2];
+            blue  = [self colorComponentFrom: colorString start: 4 length: 2];
+            break;
+        case 8: // #AARRGGBB
+            alpha = [self colorComponentFrom: colorString start: 0 length: 2];
+            red   = [self colorComponentFrom: colorString start: 2 length: 2];
+            green = [self colorComponentFrom: colorString start: 4 length: 2];
+            blue  = [self colorComponentFrom: colorString start: 6 length: 2];
+            break;
+        default:
+            [NSException raise:@"Invalid color value" format: @"Color value %@ is invalid.  It should be a hex value of the form #RBG, #ARGB, #RRGGBB, or #AARRGGBB", hexString];
+            break;
+    }
+    return [UIColor colorWithRed: red green: green blue: blue alpha: alpha];
+}
+
+- (CGFloat) colorComponentFrom: (NSString *) string start: (NSUInteger) start length: (NSUInteger) length {
+    NSString *substring = [string substringWithRange: NSMakeRange(start, length)];
+    NSString *fullHex = length == 2 ? substring : [NSString stringWithFormat: @"%@%@", substring, substring];
+    unsigned hexComponent;
+    [[NSScanner scannerWithString: fullHex] scanHexInt: &hexComponent];
+    return hexComponent / 255.0;
+}
+
 - (UIImage*) getUIImageFromURLString:(NSString *)imageURLString {
     NSURL *imageURL = [RCTConvert NSURL:imageURLString];
     NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
@@ -190,6 +413,13 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     
     return maskedImage;
 }
+- (NSString *)saveImage:(UIImage *)image withImageName: (NSString *)fileName {
+    NSString *fullPath = [NSString stringWithFormat:@"%@/%@.png", [self getPathForDirectory:NSDocumentDirectory], fileName];
+
+    NSData *imageData = UIImagePNGRepresentation(image);
+    [imageData writeToFile:fullPath atomically:YES];
+    return fullPath;
+}
 
 - (NSString *)saveImage:(UIImage *)image withPostfix:(NSString *)postfix {
     NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
@@ -201,10 +431,18 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
 
 - (void)deleteImageAtPath:(NSString *)path {
     NSError *error;
-    if ([[NSFileManager defaultManager] isDeletableFileAtPath:path]) {
-        BOOL success = [[NSFileManager defaultManager] removeItemAtPath:path error:&error];
-        if (!success) {
-            NSLog(@"Error removing file at path: %@", error.localizedDescription);
+    NSString *directoryPath = [path stringByDeletingLastPathComponent];
+    NSString *extension = [path pathExtension];
+    NSString *fileName = [[path lastPathComponent] stringByDeletingPathExtension];
+    NSString *fileName2x = [NSString stringWithFormat:@"%@/%@@2x.%@", directoryPath, fileName, extension];
+    NSString *fileName3x = [NSString stringWithFormat:@"%@/%@@3x.%@", directoryPath, fileName, extension];
+    NSArray * paths = @[path, fileName2x, fileName3x];
+    for (int i = 0; i < paths.count; i++) {
+        if ([[NSFileManager defaultManager] isDeletableFileAtPath:paths[i]]) {
+            BOOL success = [[NSFileManager defaultManager] removeItemAtPath:paths[i] error:&error];
+            if (!success) {
+                NSLog(@"Error removing file at path: %@", error.localizedDescription);
+            }
         }
     }
 }
