@@ -238,7 +238,7 @@ RCT_EXPORT_METHOD(merge:(NSArray *)imageURLStrings
 }
 
 RCT_EXPORT_METHOD(mosaic:(NSArray *)imageURLStrings
-                  direction:(NSNumber)direction
+                  direction:(nonnull NSNumber *)direction
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
@@ -253,7 +253,7 @@ RCT_EXPORT_METHOD(mosaic:(NSArray *)imageURLStrings
     
     UIImage *mergedImage = [self mosaicImages:imagesImmutable direction:direction];
     
-    NSString *imagePath = [self saveImage:mergedImage withPostfix:@"merged"];
+    NSString *imagePath = [self saveImage:mergedImage withPostfix:@"mosaic"];
 
     resolve(@{
               @"uri": imagePath,
@@ -636,37 +636,39 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return [UIImage imageWithCGImage:cgImage];
 }
 
-- (UIImage*) mosaicImages:(NSArray *)images direction:(NSNumber)direction
+- (UIImage*) mosaicImages:(NSArray *)images direction:(NSNumber *)direction
 {
-    NSNumber width = 0, height = 0, offset = 0;
+    NSNumber *width = [NSNumber numberWithInt:0],
+        *height = [NSNumber numberWithInt:0],
+        *offset = [NSNumber numberWithInt:0];
 
-    for (UImage *image in images) {
-      if (direction == 0) {
+    for (UIImage *image in images) {
+      if ([direction intValue] == 0) {
         // sum all widths and get greater height
-        width = width + image.size.width * image.scale;
-        if (image.size.height * image.scale > height) {
-          height = image.size.height * image.scale;
+        width = [NSNumber numberWithInt:([width intValue] + image.size.width)];
+        if (image.size.height > [height intValue]) {
+            height = [NSNumber numberWithInt:(image.size.height)];
         }
-      } else if (direction == 1) {
+      } else if ([direction intValue] == 1) {
         // sum all heights and get greater width
-        height = height + image.size.height * image.scale;
-        if (image.size.width * image.scale > width) {
-          width = image.size.width * image.scale;
+        height = [NSNumber numberWithInt:([height intValue] + image.size.height)];
+        if (image.size.width > [width intValue]) {
+            width = [NSNumber numberWithInt:(image.size.width)];
         }
       }
     }
 
     UIImage *firstImage = [images objectAtIndex:0];
     
-    CGContextRef ctx = CGBitmapContextCreate(nil, width, height, CGImageGetBitsPerComponent(firstImage.CGImage), 0, CGImageGetColorSpace(firstImage.CGImage), kCGImageAlphaPremultipliedLast);
+    CGContextRef ctx = CGBitmapContextCreate(nil, [width intValue], [height intValue], CGImageGetBitsPerComponent(firstImage.CGImage), 0, CGImageGetColorSpace(firstImage.CGImage), kCGImageAlphaPremultipliedLast);
     
     for (UIImage *image in images) {
-      if (direction == 0) {
-        CGContextDrawImage(ctx, CGRectMake(offset, 0, image.size.width * image.scale, image.size.height * image.scale), image.CGImage);
-        offset = offset + image.size.width * image.scale;
-      } else if (direction == 1) {
-        CGContextDrawImage(ctx, CGRectMake(0, offset, image.size.width * image.scale, image.size.height * image.scale), image.CGImage);
-        offset = offset + image.size.height * image.scale;
+      if ([direction intValue] == 0) {
+        CGContextDrawImage(ctx, CGRectMake([offset intValue], 0, image.size.width, image.size.height), image.CGImage);
+        offset = [NSNumber numberWithInt:([offset intValue] + image.size.width)];
+      } else if ([direction intValue] == 1) {
+        CGContextDrawImage(ctx, CGRectMake(0, [offset intValue], image.size.width, image.size.height), image.CGImage);
+          offset = [NSNumber numberWithInt:([offset intValue] + image.size.height)];
       }
     }
     
