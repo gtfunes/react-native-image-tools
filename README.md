@@ -239,3 +239,25 @@ RNImageTools.merge(
   // Sync with your app state
 }).catch(console.error);
 ```
+
+### mosaic(images, direction)
+#### Parameter(s)
+* **images:** Array 
+    * **uri:** String - path to image
+* **direction:** Number (0 for horizontal, 1 for vertical)
+#### Returns Promise of
+* **mergedImage:** Object 
+    * **uri:** String
+    * **width:** Number
+    * **height:** Number
+```javascript
+RNImageTools.merge(
+    [
+        image1,
+        image2,
+        image3,
+    ]
+).then(({ uri, width, height }) => {
+  // Sync with your app state
+}).catch(console.error);
+```
