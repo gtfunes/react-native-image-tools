@@ -278,6 +278,63 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
+  public void mosaic(ReadableArray uriStrings, int direction, Promise promise) {
+    int width = 0, height = 0, offset = 0;
+
+    for (int i = 0; i < uriStrings.size(); i++) {
+      Bitmap bmp = Utility.bitmapFromUriString(uriStrings.getString(i), promise, reactContext);
+      if (bmp == null) {
+        return;
+      }
+      if (direction == 0) {
+        // sum all widths and get greater height
+        width = width + bmp.getWidth();
+        if (bmp.getHeight() > height) {
+          height = bmp.getHeight();
+        }
+      }
+      else if (direction == 1) {
+        // sum all heights and get greater width
+        height = height + bmp.getHeight();
+        if (bmp.getWidth() > width) {
+          width = bmp.getWidth();
+        }
+      }
+    }
+
+    Bitmap firstBmp = Utility.bitmapFromUriString(uriStrings.getString(0), promise, reactContext);
+    if (firstBmp == null) {
+      return;
+    }
+    Bitmap editBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+    Canvas canvas = new Canvas(editBmp);
+
+    for (int i = 0; i < uriStrings.size(); i++) {
+      Bitmap bmp = Utility.bitmapFromUriString(uriStrings.getString(i), promise, reactContext);
+      if (bmp == null) {
+        return;
+      }
+      Rect dstRect, srcRect = new Rect(0, 0, bmp.getWidth(), bmp.getHeight());
+
+      if (direction == 0) {
+        dstRect = new Rect(offset, 0, canvas.getWidth(), canvas.getHeight());
+        offset = offset + bmp.getWidth();
+      } else {
+        dstRect = new Rect(0, offset, canvas.getWidth(), canvas.getHeight());
+        offset = offset + bmp.getHeight();
+      }
+
+      canvas.drawBitmap(bmp, srcRect, dstRect, null);
+    }
+
+    File file = Utility.createRandomPNGFile(reactContext);
+    Utility.writeBMPToPNGFile(editBmp, file, promise);
+
+    final WritableMap map = Utility.buildImageReactMap(file, editBmp);
+    promise.resolve(map);
+  }
+
+  @ReactMethod
   public void createMaskFromShape(ReadableMap options, Promise promise) {
     final ReadableArray points = options.getArray("points");
     final int width = options.getInt("width");
