@@ -1,13 +1,14 @@
 # react-native-image-tools-wm
-A collection of image processing tools for React Native
+A collection of image processing tools for React Native (Android and iOS).
+
+This fork contains a few changes and fixes, such as:
+
+* Uses JPEG instead of PNG
+* Adds "mosaic" function for merging multiple pictures side by side (horizontally or vertically)
 
 ## Getting started
 
-`$ npm install react-native-image-tools-wm --save`
-
-### Automatic installation
-
-`$ react-native link react-native-image-tools-wm`
+`$ npm install github:jesobreira/react-native-image-tools`
 
 ### Manual installation
 
@@ -256,7 +257,8 @@ RNImageTools.merge(
         image1,
         image2,
         image3,
-    ]
+    ],
+    direction // = 0 or 1
 ).then(({ uri, width, height }) => {
   // Sync with your app state
 }).catch(console.error);
