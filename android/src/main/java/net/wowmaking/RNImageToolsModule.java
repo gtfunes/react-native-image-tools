@@ -47,8 +47,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
 
     canvas.drawBitmap(bmp, srcRect, dstRect, null);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -62,8 +62,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
     }
     Bitmap croppedBmp = Bitmap.createBitmap(bmp, x, y, width, height);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(croppedBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(croppedBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, croppedBmp);
     promise.resolve(map);
@@ -80,8 +80,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
     Rect dstRect = this.getResizeRect(bmp, width, height);
     Canvas canvas = this.getCornerRadiusCanvas(bmp, editBmp, dstRect, radius);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -112,8 +112,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
         dstRect.bottom - scale);
     canvas.drawRoundRect(borderRectF, radius - scale, radius - scale, borderPaint);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -158,8 +158,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
         borderRectF.bottom - scale - paddingScale);
     canvas.drawRoundRect(paddingRectF, paddingRadius - paddingScale, paddingRadius - paddingScale, paddingPaint);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -215,8 +215,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
         borderRectF.bottom - scale - paddingScale);
     canvas.drawRoundRect(paddingRectF, paddingRadius - paddingScale, paddingRadius - paddingScale, paddingPaint);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -243,8 +243,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
     canvas.drawRect(0, 0, bmp.getWidth(), bmp.getHeight(), rectPaint);
     canvas.drawBitmap(bmp, mtrx, null);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -270,8 +270,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
       canvas.drawBitmap(bmp, srcRect, dstRect, null);
     }
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -327,8 +327,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
       canvas.drawBitmap(bmp, srcRect, dstRect, null);
     }
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(editBmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(editBmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
@@ -379,8 +379,8 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
 
     canvas.drawPath(shapePath, shapePaint);
 
-    File file = Utility.createRandomPNGFile(reactContext);
-    Utility.writeBMPToPNGFile(bmp, file, promise);
+    File file = Utility.createRandomJPEGFile(reactContext);
+    Utility.writeBMPToJPEGFile(bmp, file, promise);
 
     final WritableMap map = Utility.buildImageReactMap(file, bmp);
     promise.resolve(map);
