@@ -4,7 +4,6 @@ A collection of image processing tools for React Native (Android and iOS).
 This fork contains a few changes and fixes, such as:
 
 * Uses JPEG instead of PNG
-* Adds "mosaic" function for merging multiple pictures side by side (horizontally or vertically)
 
 ## Getting started
 
@@ -216,50 +215,6 @@ RNImageTools.createMaskFromShape({
   height: 500,
   inverted: false,
 }).then(({ uri, width, height }) => {
-  // Sync with your app state
-}).catch(console.error);
-```
-
-### merge(images)
-#### Parameter(s)
-* **images:** Array 
-    * **uri:** String - path to image
-#### Returns Promise of
-* **mergedImage:** Object 
-    * **uri:** String
-    * **width:** Number
-    * **height:** Number
-```javascript
-RNImageTools.merge(
-    [
-        image1,
-        image2,
-        image3,
-    ]
-).then(({ uri, width, height }) => {
-  // Sync with your app state
-}).catch(console.error);
-```
-
-### mosaic(images, direction)
-#### Parameter(s)
-* **images:** Array 
-    * **uri:** String - path to image
-* **direction:** Number (0 for horizontal, 1 for vertical)
-#### Returns Promise of
-* **mergedImage:** Object 
-    * **uri:** String
-    * **width:** Number
-    * **height:** Number
-```javascript
-RNImageTools.merge(
-    [
-        image1,
-        image2,
-        image3,
-    ],
-    direction // = 0 or 1
-).then(({ uri, width, height }) => {
   // Sync with your app state
 }).catch(console.error);
 ```
