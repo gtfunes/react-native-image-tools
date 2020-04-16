@@ -2,6 +2,7 @@
 #import "RNImageTools.h"
 #import "React/RCTLog.h"
 #import "React/RCTConvert.h"
+#import <React/RCTImageLoader.h>
 
 CGFloat layerImageScaleFactor = 1;
 
@@ -409,10 +410,17 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
 }
 
 - (UIImage*) getUIImageFromURLString:(NSString *)imageURLString {
+    __block UIImage *finalImage = nil;
     NSURL *imageURL = [RCTConvert NSURL:imageURLString];
-    NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
-    UIImage *image = [self fixImageOrientation:[[UIImage alloc] initWithData:imageData]];
-    return image;
+    
+    __weak typeof(self) weakSelf = self;
+    [[self.bridge moduleForClass:[RCTImageLoader class]] loadImageWithURLRequest:[NSURLRequest requestWithURL:imageURL] callback:^(NSError *error, UIImage *image) {
+        if (!error) {
+            finalImage = [weakSelf fixImageOrientation:image];
+        }
+    }];
+    
+    return finalImage;
 }
 
 - (UIImage*) maskImage:(UIImage *) image withMask:(UIImage *) mask
