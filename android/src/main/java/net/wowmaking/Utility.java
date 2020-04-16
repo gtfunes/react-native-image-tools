@@ -21,17 +21,19 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.UUID;
-import org.apache.commons.io.IOUtils;
 
 final class Utility {
+    public static final int EOF = -1;
 
     private static final String SCHEME_FILE = "file";
     private static final String SCHEME_CONTENT = "content";
+    private static final int DEFAULT_BUFFER_SIZE = 1024 * 4;
 
     static WritableMap buildImageReactMap(File file, Bitmap bmp) {
         WritableMap map = Arguments.createMap();
@@ -39,6 +41,26 @@ final class Utility {
         map.putDouble("width", bmp.getWidth());
         map.putDouble("height", bmp.getHeight());
         return map;
+    }
+
+        public static long copyLarge(final InputStream input, final OutputStream output, final byte[] buffer)
+            throws IOException {
+        long count = 0;
+        int n;
+        while (EOF != (n = input.read(buffer))) {
+            output.write(buffer, 0, n);
+            count += n;
+        }
+        return count;
+    }
+
+
+    public static int copy(final InputStream input, final OutputStream output) throws IOException {
+        final long count = copyLarge(input, output, new byte[DEFAULT_BUFFER_SIZE]);
+        if (count > Integer.MAX_VALUE) {
+            return -1;
+        }
+        return (int) count;
     }
 
     static Bitmap bitmapFromUriString(String uriString, final Promise promise, Context context) {
@@ -75,7 +97,7 @@ final class Utility {
 
                 final FileOutputStream outputStream = new FileOutputStream(tempFile);
 
-                IOUtils.copy(inputStream, outputStream);
+                Utility.copy(inputStream, outputStream);
 
                 final int orientation = Utility.getOrientation(tempFile.getAbsolutePath());
 
@@ -102,7 +124,6 @@ final class Utility {
         String filename = UUID.randomUUID().toString() + ".jpg";
         return new File(context.getFilesDir(), filename);
     }
-
 
     static void writeBMPToJPEGFile(Bitmap bmp, File file, Promise promise) {
         try {
@@ -203,8 +224,6 @@ final class Utility {
         }
     }
 
-
-
     static int getOrientation(InputStream stream) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             try {
@@ -253,6 +272,7 @@ final class Utility {
             default:
                 return bitmap;
         }
+        
         try {
             Bitmap bmRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
             bitmap.recycle();

@@ -24,7 +24,6 @@ import java.io.File;
 import java.util.HashMap;
 
 public class RNImageToolsModule extends ReactContextBaseJavaModule {
-
   private final ReactApplicationContext reactContext;
 
   public RNImageToolsModule(ReactApplicationContext reactContext) {
@@ -251,90 +250,6 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void merge(ReadableArray uriStrings, Promise promise) {
-    Bitmap firstBmp = Utility.bitmapFromUriString(uriStrings.getString(0), promise, reactContext);
-    if (firstBmp == null) {
-      return;
-    }
-    Bitmap editBmp = Bitmap.createBitmap(firstBmp.getWidth(), firstBmp.getHeight(), Bitmap.Config.ARGB_8888);
-    Canvas canvas = new Canvas(editBmp);
-    canvas.drawBitmap(firstBmp, new Matrix(), null);
-
-    for (int i = 1; i < uriStrings.size(); i++) {
-      Bitmap bmp = Utility.bitmapFromUriString(uriStrings.getString(i), promise, reactContext);
-      if (bmp == null) {
-        return;
-      }
-      Rect srcRect = new Rect(0, 0, bmp.getWidth(), bmp.getHeight());
-      Rect dstRect = new Rect(0, 0, canvas.getWidth(), canvas.getHeight());
-      canvas.drawBitmap(bmp, srcRect, dstRect, null);
-    }
-
-    File file = Utility.createRandomJPEGFile(reactContext);
-    Utility.writeBMPToJPEGFile(editBmp, file, promise);
-
-    final WritableMap map = Utility.buildImageReactMap(file, editBmp);
-    promise.resolve(map);
-  }
-
-  @ReactMethod
-  public void mosaic(ReadableArray uriStrings, int direction, Promise promise) {
-    int width = 0, height = 0, offset = 0;
-
-    for (int i = 0; i < uriStrings.size(); i++) {
-      Bitmap bmp = Utility.bitmapFromUriString(uriStrings.getString(i), promise, reactContext);
-      if (bmp == null) {
-        return;
-      }
-      if (direction == 0) {
-        // sum all widths and get greater height
-        width = width + bmp.getWidth();
-        if (bmp.getHeight() > height) {
-          height = bmp.getHeight();
-        }
-      }
-      else if (direction == 1) {
-        // sum all heights and get greater width
-        height = height + bmp.getHeight();
-        if (bmp.getWidth() > width) {
-          width = bmp.getWidth();
-        }
-      }
-    }
-
-    Bitmap firstBmp = Utility.bitmapFromUriString(uriStrings.getString(0), promise, reactContext);
-    if (firstBmp == null) {
-      return;
-    }
-    Bitmap editBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-    Canvas canvas = new Canvas(editBmp);
-
-    for (int i = 0; i < uriStrings.size(); i++) {
-      Bitmap bmp = Utility.bitmapFromUriString(uriStrings.getString(i), promise, reactContext);
-      if (bmp == null) {
-        return;
-      }
-      Rect dstRect, srcRect = new Rect(0, 0, bmp.getWidth(), bmp.getHeight());
-
-      if (direction == 0) {
-        dstRect = new Rect(offset, 0, canvas.getWidth(), canvas.getHeight());
-        offset = offset + bmp.getWidth();
-      } else {
-        dstRect = new Rect(0, offset, canvas.getWidth(), canvas.getHeight());
-        offset = offset + bmp.getHeight();
-      }
-
-      canvas.drawBitmap(bmp, srcRect, dstRect, null);
-    }
-
-    File file = Utility.createRandomJPEGFile(reactContext);
-    Utility.writeBMPToJPEGFile(editBmp, file, promise);
-
-    final WritableMap map = Utility.buildImageReactMap(file, editBmp);
-    promise.resolve(map);
-  }
-
-  @ReactMethod
   public void createMaskFromShape(ReadableMap options, Promise promise) {
     final ReadableArray points = options.getArray("points");
     final int width = options.getInt("width");
@@ -434,19 +349,6 @@ public class RNImageToolsModule extends ReactContextBaseJavaModule {
 
     final WritableMap map = Utility.buildImageReactMap(file, editBmp);
     promise.resolve(map);
-  }
-
-  @ReactMethod
-  public void delete(String uriString, Promise promise) {
-    try {
-      File fdelete = new File(reactContext.getFilesDir(), uriString.substring(uriString.lastIndexOf("/") + 1));
-      if (fdelete.exists()) {
-        fdelete.delete();
-      }
-    } catch (Exception e) {
-
-    }
-    promise.resolve(true);
   }
 
   public Rect getResizeRect(Bitmap image, int resizeWidth, int resizeHeight) {
