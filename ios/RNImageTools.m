@@ -6,7 +6,11 @@
 
 CGFloat layerImageScaleFactor = 1;
 
+typedef void(^imageReturnBlock)(UIImage* image);
+
 @implementation RNImageTools
+
+@synthesize bridge = _bridge;
 
 - (dispatch_queue_t)methodQueue
 {
@@ -22,16 +26,17 @@ RCT_EXPORT_METHOD(transform:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    UIImage *image = [self getUIImageFromURLString:imageURLString];
-    UIImage *resultImage = [self transformImage:image translateX:translateX translateY:translateY rotate:rotate scaleX:scale scaleY:scale];
-    
-    NSString *imagePath = [self saveImage:resultImage withPostfix:@"transformed"];
-    
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:resultImage.size.width],
-              @"height": [NSNumber numberWithFloat:resultImage.size.height]
-              });
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        UIImage *resultImage = [self transformImage:image translateX:translateX translateY:translateY rotate:rotate scaleX:scale scaleY:scale];
+        
+        NSString *imagePath = [self saveImage:resultImage withPostfix:@"transformed"];
+        
+        resolve(@{
+                  @"uri": imagePath,
+                  @"width": [NSNumber numberWithFloat:resultImage.size.width],
+                  @"height": [NSNumber numberWithFloat:resultImage.size.height]
+                  });
+    }];
 }
 
 RCT_EXPORT_METHOD(crop:(NSString *)imageURLString
@@ -42,18 +47,17 @@ RCT_EXPORT_METHOD(crop:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    NSURL *imageURL = [RCTConvert NSURL:imageURLString];
-    NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
-    UIImage *image = [self fixImageOrientation:[[UIImage alloc] initWithData:imageData]];
-    UIImage *croppedImage = [self cropImage:image toRect:CGRectMake(x, y, width, height)];
-    
-    NSString *imagePath = [self saveImage:croppedImage withPostfix:@"cropped"];
-    
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:croppedImage.size.width],
-              @"height": [NSNumber numberWithFloat:croppedImage.size.height]
-              });
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        UIImage *croppedImage = [self cropImage:image toRect:CGRectMake(x, y, width, height)];
+        
+        NSString *imagePath = [self saveImage:croppedImage withPostfix:@"cropped"];
+        
+        resolve(@{
+                  @"uri": imagePath,
+                  @"width": [NSNumber numberWithFloat:croppedImage.size.width],
+                  @"height": [NSNumber numberWithFloat:croppedImage.size.height]
+                  });
+    }];
 }
 
 RCT_EXPORT_METHOD(mask:(NSString *)imageURLString
@@ -62,26 +66,29 @@ RCT_EXPORT_METHOD(mask:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    UIImage *image = [self getUIImageFromURLString:imageURLString];
-    UIImage *maskImage = [self getUIImageFromURLString:maskImageURLString];
-    BOOL trimTransparency = [RCTConvert BOOL:options[@"trimTransparency"]];
-    
-    CGRect cropRect = [self calcRect:maskImage.size forContainedSize:image.size];
-    UIImage *croppedImage = [self cropImage:image toRect:cropRect];
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        [self getUIImageFromURLString:maskImageURLString callback:^(UIImage *maskImage) {
+            BOOL trimTransparency = [RCTConvert BOOL:options[@"trimTransparency"]];
+            
+            CGRect cropRect = [self calcRect:maskImage.size forContainedSize:image.size];
+            UIImage *croppedImage = [self cropImage:image toRect:cropRect];
 
-    UIImage *maskedImage = [self maskImage:croppedImage withMask:maskImage];
-    UIImageView *maskedImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, maskedImage.size.width, maskedImage.size.height)];
-    maskedImageView.image = maskedImage;
-    UIImage *maskedImageFromLayer = [self imageFromLayer:maskedImageView.layer];
-    
-    UIImage *resultImage = trimTransparency ? [self trimTransparentPixels:maskedImageFromLayer requiringFullOpacity:NO] : maskedImageFromLayer;
-    NSString *imagePath = [self saveImage:resultImage withPostfix:@"masked"];
-    
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:resultImage.size.width],
-              @"height": [NSNumber numberWithFloat:resultImage.size.height]
-              });
+            UIImage *maskedImage = [self maskImage:croppedImage withMask:maskImage];
+            UIImageView *maskedImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, maskedImage.size.width, maskedImage.size.height)];
+            maskedImageView.image = maskedImage;
+            UIImage *maskedImageFromLayer = [self imageFromLayer:maskedImageView.layer];
+            
+            UIImage *resultImage = trimTransparency ? [self trimTransparentPixels:maskedImageFromLayer requiringFullOpacity:NO] : maskedImageFromLayer;
+            NSString *imagePath = [self saveImage:resultImage withPostfix:@"masked"];
+            
+            resolve(@{
+                      @"uri": imagePath,
+                      @"width": [NSNumber numberWithFloat:resultImage.size.width],
+                      @"height": [NSNumber numberWithFloat:resultImage.size.height]
+                      });
+        }];
+    }];
+
 }
 
 RCT_EXPORT_METHOD(resize:(NSString *)imageURLString
@@ -90,17 +97,17 @@ RCT_EXPORT_METHOD(resize:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    UIImage *image = [self getUIImageFromURLString:imageURLString];
-    
-    image = [self resizeImage:image toWidth:width toHeight:height];
-    
-    NSString *imagePath = [self saveImage:image withPostfix:@"resized"];
-    
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:image.size.width],
-              @"height": [NSNumber numberWithFloat:image.size.height]
-              });
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        image = [self resizeImage:image toWidth:width toHeight:height];
+        
+        NSString *imagePath = [self saveImage:image withPostfix:@"resized"];
+        
+        resolve(@{
+                  @"uri": imagePath,
+                  @"width": [NSNumber numberWithFloat:image.size.width],
+                  @"height": [NSNumber numberWithFloat:image.size.height]
+                  });
+    }];
 }
 
 RCT_EXPORT_METHOD(cornerRadius:(NSString *)imageURLString
@@ -110,19 +117,19 @@ RCT_EXPORT_METHOD(cornerRadius:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    UIImage *image = [self getUIImageFromURLString:imageURLString];
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        image = [self resizeImage:image toWidth:width toHeight:height];
 
-    image = [self resizeImage:image toWidth:width toHeight:height];
+        UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:radius andBorderColor:nil];
 
-    UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:radius andBorderColor:nil];
+        NSString *imagePath = [self saveImage:newImage withPostfix:@"cornerRadius"];
 
-    NSString *imagePath = [self saveImage:newImage withPostfix:@"cornerRadius"];
-
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:image.size.width],
-              @"height": [NSNumber numberWithFloat:image.size.height]
-              });
+        resolve(@{
+                  @"uri": imagePath,
+                  @"width": [NSNumber numberWithFloat:image.size.width],
+                  @"height": [NSNumber numberWithFloat:image.size.height]
+                  });
+    }];
 }
 
 RCT_EXPORT_METHOD(borderRadius:(NSString *)imageURLString
@@ -133,18 +140,19 @@ RCT_EXPORT_METHOD(borderRadius:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    UIImage *image = [self getUIImageFromURLString:imageURLString];
-    image = [self resizeImage:image toWidth:width toHeight:height];
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        image = [self resizeImage:image toWidth:width toHeight:height];
 
-    UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:radius andBorderColor:borderColor];
+        UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:radius andBorderColor:borderColor];
 
-    NSString *imagePath = [self saveImage:newImage withPostfix:@"borderRadius"];
+        NSString *imagePath = [self saveImage:newImage withPostfix:@"borderRadius"];
 
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:image.size.width],
-              @"height": [NSNumber numberWithFloat:image.size.height]
-              });
+        resolve(@{
+                  @"uri": imagePath,
+                  @"width": [NSNumber numberWithFloat:image.size.width],
+                  @"height": [NSNumber numberWithFloat:image.size.height]
+                  });
+    }];
 }
 
 RCT_EXPORT_METHOD(borderRadiusWithPadding:(NSString *)imageURLString
@@ -156,22 +164,28 @@ RCT_EXPORT_METHOD(borderRadiusWithPadding:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    UIImage *image = [self getUIImageFromURLString:imageURLString];
-    CGSize size = CGSizeMake(width, height);
-    //draw image first
-    UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:image.size.width/2 withPadding: padding * image.size.width / 26 andBorderColor:borderColor];
-    UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
-    NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
-    NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
-    UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
-    [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
-    UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
-    [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:resizedImage.size.width],
-              @"height": [NSNumber numberWithFloat:resizedImage.size.height]
-              });
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        CGSize size = CGSizeMake(width, height);
+        
+        //draw image first
+        UIImage *newImage =  [self drawCornerRadiusForImage:image withRadius:image.size.width/2 withPadding: padding * image.size.width / 26 andBorderColor:borderColor];
+        UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
+        
+        NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
+        NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
+        
+        UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
+        [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
+        
+        UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
+        [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
+        
+        resolve(@{
+                  @"uri": imagePath,
+                  @"width": [NSNumber numberWithFloat:resizedImage.size.width],
+                  @"height": [NSNumber numberWithFloat:resizedImage.size.height]
+                  });
+    }];
 }
 
 RCT_EXPORT_METHOD(borderCircle:(NSString *)imageURLString
@@ -183,23 +197,28 @@ RCT_EXPORT_METHOD(borderCircle:(NSString *)imageURLString
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    UIImage *image = [self getUIImageFromURLString:imageURLString];
-    CGSize size = CGSizeMake(imageSize, imageSize);
-    //draw image first
-    UIImage *newImage = [self cropCircleForImage:image withSize:imageSize withPadding:padding borderWith:borderWidth borderColor:borderColor andBackgroundColor:backgroundColor];
-    
-    UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
-    NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
-    NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
-    UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
-    [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
-    UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
-    [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:resizedImage.size.width],
-              @"height": [NSNumber numberWithFloat:resizedImage.size.height]
-              });
+    [self getUIImageFromURLString:imageURLString callback:^(UIImage *image) {
+        CGSize size = CGSizeMake(imageSize, imageSize);
+        
+        //draw image first
+        UIImage *newImage = [self cropCircleForImage:image withSize:imageSize withPadding:padding borderWith:borderWidth borderColor:borderColor andBackgroundColor:backgroundColor];
+        
+        UIImage *resizedImage = [self imageWithImage:newImage scaledToSize:size scale:1];
+        NSString *fileName = [[NSProcessInfo processInfo] globallyUniqueString];
+        NSString *imagePath = [self saveImage:resizedImage withImageName:[NSString stringWithFormat:@"%@",fileName]];
+        
+        UIImage *resizedImage2x = [self imageWithImage:newImage scaledToSize:size scale:2];
+        [self saveImage:resizedImage2x withImageName:[NSString stringWithFormat:@"%@@2x",fileName]];
+        
+        UIImage *resizedImage3x = [self imageWithImage:newImage scaledToSize:size scale:3];
+        [self saveImage:resizedImage3x withImageName:[NSString stringWithFormat:@"%@@3x",fileName]];
+        
+        resolve(@{
+                  @"uri": imagePath,
+                  @"width": [NSNumber numberWithFloat:resizedImage.size.width],
+                  @"height": [NSNumber numberWithFloat:resizedImage.size.height]
+                  });
+    }];
 }
 
 - (UIImage *)imageWithImage:(UIImage *)image scaledToSize:(CGSize)newSize scale:(CGFloat)scale {
@@ -212,55 +231,6 @@ RCT_EXPORT_METHOD(borderCircle:(NSString *)imageURLString
     UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return newImage;
-}
-
-RCT_EXPORT_METHOD(merge:(NSArray *)imageURLStrings
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejector:(RCTPromiseRejectBlock)reject)
-{
-    NSInteger count = [imageURLStrings count];
-    NSMutableArray *images = [[NSMutableArray alloc] initWithCapacity:count];
-    for (NSInteger i = 0; i < count; i++) {
-        UIImage *image = [self getUIImageFromURLString:imageURLStrings[i]];
-        [images addObject:image];
-    }
-    
-    NSArray *imagesImmutable = [[NSArray alloc] initWithArray:images];
-    
-    UIImage *mergedImage = [self mergeImages:imagesImmutable];
-    
-    NSString *imagePath = [self saveImage:mergedImage withPostfix:@"merged"];
-
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:mergedImage.size.width],
-              @"height": [NSNumber numberWithFloat:mergedImage.size.height]
-              });
-}
-
-RCT_EXPORT_METHOD(mosaic:(NSArray *)imageURLStrings
-                  direction:(nonnull NSNumber *)direction
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejector:(RCTPromiseRejectBlock)reject)
-{
-    NSInteger count = [imageURLStrings count];
-    NSMutableArray *images = [[NSMutableArray alloc] initWithCapacity:count];
-    for (NSInteger i = 0; i < count; i++) {
-        UIImage *image = [self getUIImageFromURLString:imageURLStrings[i]];
-        [images addObject:image];
-    }
-    
-    NSArray *imagesImmutable = [[NSArray alloc] initWithArray:images];
-    
-    UIImage *mergedImage = [self mosaicImages:imagesImmutable direction:direction];
-    
-    NSString *imagePath = [self saveImage:mergedImage withPostfix:@"mosaic"];
-
-    resolve(@{
-              @"uri": imagePath,
-              @"width": [NSNumber numberWithFloat:mergedImage.size.width],
-              @"height": [NSNumber numberWithFloat:mergedImage.size.height]
-              });
 }
 
 RCT_EXPORT_METHOD(delete:(NSString *)imageURLString
@@ -409,18 +379,19 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return hexComponent / 255.0;
 }
 
-- (UIImage*) getUIImageFromURLString:(NSString *)imageURLString {
-    __block UIImage *finalImage = nil;
+- (void) getUIImageFromURLString:(NSString *)imageURLString callback:(imageReturnBlock)callback {
     NSURL *imageURL = [RCTConvert NSURL:imageURLString];
     
     __weak typeof(self) weakSelf = self;
     [[self.bridge moduleForClass:[RCTImageLoader class]] loadImageWithURLRequest:[NSURLRequest requestWithURL:imageURL] callback:^(NSError *error, UIImage *image) {
+        UIImage *finalImage = nil;
+        
         if (!error) {
             finalImage = [weakSelf fixImageOrientation:image];
         }
+        
+        callback(finalImage);
     }];
-    
-    return finalImage;
 }
 
 - (UIImage*) maskImage:(UIImage *) image withMask:(UIImage *) mask
@@ -462,33 +433,12 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return fullPath;
 }
 
-- (void)deleteImageAtPath:(NSString *)path {
-    NSError *error;
-    NSString *directoryPath = [path stringByDeletingLastPathComponent];
-    NSString *extension = [path pathExtension];
-    NSString *fileName = [[path lastPathComponent] stringByDeletingPathExtension];
-    NSString *fileName2x = [NSString stringWithFormat:@"%@/%@@2x.%@", directoryPath, fileName, extension];
-    NSString *fileName3x = [NSString stringWithFormat:@"%@/%@@3x.%@", directoryPath, fileName, extension];
-    NSArray * paths = @[path, fileName2x, fileName3x];
-    for (int i = 0; i < paths.count; i++) {
-        if ([[NSFileManager defaultManager] isDeletableFileAtPath:paths[i]]) {
-            BOOL success = [[NSFileManager defaultManager] removeItemAtPath:paths[i] error:&error];
-            if (!success) {
-                NSLog(@"Error removing file at path: %@", error.localizedDescription);
-            }
-        }
-    }
-}
-
-
-- (NSString *)getPathForDirectory:(int)directory
-{
+- (NSString *)getPathForDirectory:(int)directory {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(directory, NSUserDomainMask, YES);
     return [paths firstObject];
 }
 
-- (UIImage *)imageFromLayer:(CALayer *)layer
-{
+- (UIImage *)imageFromLayer:(CALayer *)layer {
     UIGraphicsBeginImageContextWithOptions(layer.frame.size, NO, layerImageScaleFactor);
     
     [layer renderInContext:UIGraphicsGetCurrentContext()];
@@ -499,8 +449,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return outputImage;
 }
 
--(UIImage *) fixImageOrientation:(UIImage *) image {
-    
+- (UIImage *) fixImageOrientation:(UIImage *) image {
     if (image.imageOrientation == UIImageOrientationUp) {
         return image;
     }
@@ -574,8 +523,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
                  translateY:(CGFloat)y
                      rotate:(CGFloat)degree
                      scaleX:(CGFloat)sx
-                     scaleY:(CGFloat)sy
-{
+                     scaleY:(CGFloat)sy {
     CGContextRef ctx = CGBitmapContextCreate(nil, image.size.width, image.size.height, CGImageGetBitsPerComponent(image.CGImage), 0, CGImageGetColorSpace(image.CGImage), kCGImageAlphaPremultipliedLast);
     
     CGContextSetFillColorWithColor(ctx, [UIColor whiteColor].CGColor);
@@ -604,8 +552,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return [UIImage imageWithCGImage:cgImage];
 }
 
-- (UIImage*) cropImage:(UIImage *) image toRect:(CGRect) rect
-{
+- (UIImage*) cropImage:(UIImage *) image toRect:(CGRect) rect {
     CGImageRef imageRef = CGImageCreateWithImageInRect([image CGImage], rect);
     UIImage *cropped = [UIImage imageWithCGImage:imageRef];
     CGImageRelease(imageRef);
@@ -613,8 +560,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return cropped;
 }
 
-- (UIImage*) resizeImage:(UIImage *)image toWidth:(CGFloat)width toHeight:(CGFloat)height
-{
+- (UIImage*) resizeImage:(UIImage *)image toWidth:(CGFloat)width toHeight:(CGFloat)height {
     CGContextRef ctx = CGBitmapContextCreate(nil, width, height, CGImageGetBitsPerComponent(image.CGImage), 0, CGImageGetColorSpace(image.CGImage), kCGImageAlphaPremultipliedLast);
     
     CGRect cropRect = [self calcRect:image.size forContainedSize:CGSizeMake(width, height)];;
@@ -626,8 +572,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return [UIImage imageWithCGImage:cgImage];
 }
 
-- (UIImage*) mergeImages:(NSArray *)images
-{
+- (UIImage*) mergeImages:(NSArray *)images {
     UIImage *firstImage = [images objectAtIndex:0];
     CGFloat width = firstImage.size.width;
     CGFloat height = firstImage.size.height;
@@ -644,8 +589,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return [UIImage imageWithCGImage:cgImage];
 }
 
-- (UIImage*) mosaicImages:(NSArray *)images direction:(NSNumber *)direction
-{
+- (UIImage*) mosaicImages:(NSArray *)images direction:(NSNumber *)direction {
     NSNumber *width = [NSNumber numberWithInt:0],
         *height = [NSNumber numberWithInt:0],
         *offset = [NSNumber numberWithInt:0];
@@ -686,8 +630,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return [UIImage imageWithCGImage:cgImage];
 }
 
-- (UIImage*) createMaskImageFromShape:(NSArray*)points withWidth:(CGFloat)width height:(CGFloat)height invert:(BOOL)inverted
-{
+- (UIImage*) createMaskImageFromShape:(NSArray*)points withWidth:(CGFloat)width height:(CGFloat)height invert:(BOOL)inverted {
     CGContextRef ctx = CGBitmapContextCreate(nil, width, height, 8, 0, CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB), kCGImageAlphaPremultipliedLast);
     
     NSInteger count = [points count];
@@ -720,12 +663,9 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return [UIImage imageWithCGImage:cgImage];
 }
 
-- (UIImage *) trimTransparentPixels:(UIImage *)image requiringFullOpacity:(BOOL)fullyOpaque
-{
+- (UIImage *) trimTransparentPixels:(UIImage *)image requiringFullOpacity:(BOOL)fullyOpaque {
     if (image.size.height < 2 || image.size.width < 2) {
-        
         return image;
-        
     }
     
     CGRect rect = CGRectMake(0, 0, image.size.width * image.scale, image.size.height * image.scale);
@@ -734,11 +674,8 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     UIImage *img = image;
     
     if (crop.top == 0 && crop.bottom == 0 && crop.left == 0 && crop.right == 0) {
-        
         // No cropping needed
-        
     } else {
-        
         // Calculate new crop bounds
         rect.origin.x += crop.left;
         rect.origin.y += crop.top;
@@ -757,8 +694,7 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     return img;
 }
 
-- (UIEdgeInsets)transparencyInsets:(UIImage*)image requiringFullOpacity:(BOOL)fullyOpaque
-{
+- (UIEdgeInsets)transparencyInsets:(UIImage*)image requiringFullOpacity:(BOOL)fullyOpaque {
     // Draw our image on that context
     NSInteger width  = (NSInteger)CGImageGetWidth([image CGImage]);
     NSInteger height = (NSInteger)CGImageGetHeight([image CGImage]);
@@ -780,33 +716,21 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     
     // Enumerate through all pixels
     for (NSInteger row = 0; row < height; row++) {
-        
         for (NSInteger col = 0; col < width; col++) {
-            
             if (fullyOpaque) {
-                
                 // Found non-transparent pixel
                 if (bitmapData[row*bytesPerRow + col] == UINT8_MAX) {
-                    
                     rowSum[row]++;
                     colSum[col]++;
-                    
                 }
-                
             } else {
-                
                 // Found non-transparent pixel
                 if (bitmapData[row*bytesPerRow + col]) {
-                    
                     rowSum[row]++;
                     colSum[col]++;
-                    
                 }
-                
             }
-            
         }
-        
     }
     
     // Initialize crop insets and enumerate cols/rows arrays until we find non-empty columns or row
@@ -814,44 +738,33 @@ RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
     
     // Top
     for (NSInteger i = 0; i < height; i++) {
-        
         if (rowSum[i] > 0) {
-            
             crop.top = i;
             break;
-            
         }
-        
     }
     
     // Bottom
     for (NSInteger i = height - 1; i >= 0; i--) {
-        
         if (rowSum[i] > 0) {
             crop.bottom = MAX(0, height - i - 1);
             break;
         }
-        
     }
     
     // Left
     for (NSInteger i = 0; i < width; i++) {
-        
         if (colSum[i] > 0) {
             crop.left = i;
             break;
         }
-        
     }
     
     // Right
     for (NSInteger i = width - 1; i >= 0; i--) {
-        
         if (colSum[i] > 0) {
-            
             crop.right = MAX(0, width - i - 1);
             break;
-            
         }
     }
     
