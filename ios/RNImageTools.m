@@ -233,14 +233,6 @@ RCT_EXPORT_METHOD(borderCircle:(NSString *)imageURLString
     return newImage;
 }
 
-RCT_EXPORT_METHOD(delete:(NSString *)imageURLString
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejector:(RCTPromiseRejectBlock)reject)
-{
-    [self deleteImageAtPath:imageURLString];
-    resolve(nil);
-}
-
 RCT_EXPORT_METHOD(createMaskFromShape:(NSDictionary*)options
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
